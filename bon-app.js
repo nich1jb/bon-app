@@ -1,12 +1,13 @@
 const https = require('https');
 const fs = require('fs');
 
-const makeRequest = async (uri = '') => {
+const makeRequest = uri => {
   console.log(`starting request: ${uri}`);
   return new Promise((_, reject) => {
     const req = https.get(`https://www.bonappetit.com${uri}`, res => {
-      if (res.statusCode !== 200) {
-        reject(`failed call. response code: ${res.statusCode}`);
+      const { statusCode } = res;
+      if (statusCode !== 200) {
+        reject(`failed call. response code: ${statusCode}`);
         return;
       }
       let data = [];
@@ -15,17 +16,13 @@ const makeRequest = async (uri = '') => {
       });
 
       res.on('end', () => {
-        const result = JSON.parse(Buffer.concat(data).toString()); 
+        const { items } = JSON.parse(Buffer.concat(data).toString()); 
 
-        const { items } = result;
-        if (items.length === 0) {
+        if (!items.length) {
           reject('no items');
           return;
         }
-        items.forEach(item => {
-          const { hed, publishHistory } = item;
-          const { uri } = publishHistory;
-          
+        items.forEach(({ hed, publishHistory: { uri } }) => {
           // write each recipe to an html file
           https.get(`https://www.bonappetit.com/${uri}`, res => {
             let recipeData = [];
@@ -33,8 +30,8 @@ const makeRequest = async (uri = '') => {
               recipeData.push(chunk);
             });
             res.on('end', () => {
-              const body = Buffer.concat(recipeData).toString();
-              fs.writeFile(`bon-app-recipes/${hed}.html`, body, (err) => {
+              const recipeHtml = Buffer.concat(recipeData).toString();
+              fs.writeFile(`bon-app-recipes/${hed}.html`, recipeHtml, err => {
                 if (err)
                   console.log(err);
                 else {
@@ -42,15 +39,15 @@ const makeRequest = async (uri = '') => {
                 }
               });
             });
-          }).on('error', (e) => {
-            reject(e.message);
+          }).on('error', ({ message }) => {
+            reject(message);
           });
         });
       });
     }).on('error', err => {
       reject(err);
     });
-    req.on('error', function(err) {
+    req.on('error', err => {
       reject(err);
     });
     req.end();
@@ -58,7 +55,7 @@ const makeRequest = async (uri = '') => {
 }
 
 const downloadRecipes = () => {
-  var dir = './bon-app-recipes';
+  const dir = './bon-app-recipes';
 
   if (!fs.existsSync(dir)){
       fs.mkdirSync(dir);
@@ -69,7 +66,7 @@ const downloadRecipes = () => {
   // one request every half second otherwise will hit the api request limit
   const interval = setInterval(() => {
     if (noMoreItems) clearInterval(interval);
-    makeRequest(`/api/search?page=${page}&size=10`).catch(err => {
+    makeRequest(`/api/search?page=${page}`).catch(err => {
       if (err === 'no items') noMoreItems = true;
     });
     page++;
