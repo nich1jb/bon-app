@@ -2,12 +2,11 @@ const https = require('https');
 const fs = require('fs');
 
 const makeRequest = async (uri = '') => {
-  console.log({ uri });
-  return new Promise((resolve, reject) => {
+  console.log(`starting request: ${uri}`);
+  return new Promise((_, reject) => {
     const req = https.get(`https://www.bonappetit.com${uri}`, res => {
       if (res.statusCode !== 200) {
-        console.log(res.statusCode);
-        reject('failed call');
+        reject(`failed call. response code: ${res.statusCode}`);
         return;
       }
       let data = [];
@@ -44,10 +43,9 @@ const makeRequest = async (uri = '') => {
               });
             });
           }).on('error', (e) => {
-            console.log("Got error: " + e.message);
+            reject(e.message);
           });
         });
-        resolve(items[0].url);
       });
     }).on('error', err => {
       reject(err);
