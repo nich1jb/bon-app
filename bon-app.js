@@ -67,10 +67,13 @@ const downloadRecipes = () => {
   }
 
   let page = 1;
+  let noMoreItems = false;
   // one request every half second otherwise will hit the api request limit
   const interval = setInterval(() => {
-    if (page > 1357) clearInterval(interval);
-    makeRequest(`/api/search?page=${page}&size=10`);
+    if (noMoreItems) clearInterval(interval);
+    makeRequest(`/api/search?page=${page}&size=10`).catch(err => {
+      if (err === 'no items') noMoreItems = true;
+    });
     page++;
   }, 500);
 }
